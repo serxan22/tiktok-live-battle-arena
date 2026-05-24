@@ -20,6 +20,8 @@ import {
 import { DEFAULT_BATTLE_CONFIG } from "@/lib/game/config";
 import { GIFT_ATTACKS } from "@/lib/game/gifts";
 import { useBattleStore } from "@/lib/game/store";
+import { getRealtimeRoomId } from "@/lib/realtime/broadcaster";
+import type { RealtimeStatus } from "@/lib/realtime/socketTypes";
 import type { BattleConfig, TeamId, ThemeKey } from "@/lib/game/types";
 import { opposingTeam } from "@/lib/game/utils";
 import { ThemePanel } from "./ThemePanel";
@@ -31,7 +33,7 @@ const initialGiftEdits: GiftEditState = Object.fromEntries(
 );
 
 export function ControlDashboard() {
-  const { snapshot, connected, connect, sendCommand } = useBattleStore();
+  const { snapshot, connected, connect, sendCommand, realtimeStatus } = useBattleStore();
   const [targetTeam, setTargetTeam] = useState<TeamId>(2);
   const [teamNames, setTeamNames] = useState({ 1: DEFAULT_BATTLE_CONFIG.teams[1].name, 2: DEFAULT_BATTLE_CONFIG.teams[2].name });
   const [durationSec, setDurationSec] = useState(Math.round(DEFAULT_BATTLE_CONFIG.roundDurationMs / 1000));
@@ -39,7 +41,7 @@ export function ControlDashboard() {
   const [configText, setConfigText] = useState("");
   const [importError, setImportError] = useState("");
 
-  useEffect(() => connect(DEFAULT_BATTLE_CONFIG.roomId), [connect]);
+  useEffect(() => connect(getRealtimeRoomId(), "controller"), [connect]);
 
   const theme = snapshot?.theme ?? DEFAULT_BATTLE_CONFIG.theme;
   const debug = snapshot?.debug ?? false;
@@ -137,7 +139,8 @@ export function ControlDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <StatusPill label={connected ? "Realtime bus connected" : "Waiting"} active={connected} />
+            <StatusPill label={realtimeStatusLabel(realtimeStatus, connected)} active={connected} />
+            <StatusPill label={`Room ${realtimeStatus?.roomId ?? getRealtimeRoomId()}`} active />
             <StatusPill label={snapshot ? "Live screen online" : "Open /live"} active={Boolean(snapshot)} />
             <a className="control-open-live" href="/live" target="_blank" rel="noreferrer">
               <ExternalLink size={15} />
@@ -334,6 +337,21 @@ function StatusPill({ label, active }: { label: string; active: boolean }) {
       {label}
     </div>
   );
+}
+
+function realtimeStatusLabel(status: RealtimeStatus | undefined, connected: boolean) {
+  if (!status) {
+    return connected ? "Realtime ready" : "Realtime waiting";
+  }
+
+  if (status.mode === "local") {
+    return "Local fallback ready";
+  }
+
+  const presence = status.presence
+    ? ` D${status.presence.displays} C${status.presence.controllers}`
+    : "";
+  return `Socket ${status.socketState}${presence}`;
 }
 
 function Subheading({ label }: { label: string }) {

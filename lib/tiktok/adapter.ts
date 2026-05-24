@@ -17,7 +17,9 @@ export interface TikTokLiveAdapter {
 export const TIKTOK_ENV = {
   username: "NEXT_PUBLIC_TIKTOK_USERNAME",
   mode: "NEXT_PUBLIC_GAME_MODE",
-  realtimeUrl: "NEXT_PUBLIC_SOCKET_SERVER_URL",
+  realtimeMode: "NEXT_PUBLIC_REALTIME_MODE",
+  realtimeUrl: "NEXT_PUBLIC_SOCKET_URL",
+  roomId: "NEXT_PUBLIC_ROOM_ID",
 };
 
 export function getTikTokUsername() {

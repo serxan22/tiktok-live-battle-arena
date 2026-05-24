@@ -1,24 +1,26 @@
-import { DEFAULT_BATTLE_CONFIG } from "./config";
 import type { GameCommand, GameStateSnapshot } from "./types";
-import { RealtimeBroadcaster } from "@/lib/realtime/broadcaster";
+import { getRealtimeRoomId, RealtimeBroadcaster } from "@/lib/realtime/broadcaster";
+import type { RealtimeRole } from "@/lib/realtime/socketTypes";
 
 let sharedBus: RealtimeBroadcaster | undefined;
-let sharedRoom = DEFAULT_BATTLE_CONFIG.roomId;
+let sharedRoom = getRealtimeRoomId();
+let sharedRole: RealtimeRole = "observer";
 
-export function getBattleEventBus(roomId = DEFAULT_BATTLE_CONFIG.roomId) {
-  if (!sharedBus || sharedRoom !== roomId) {
+export function getBattleEventBus(roomId = getRealtimeRoomId(), role: RealtimeRole = "observer") {
+  if (!sharedBus || sharedRoom !== roomId || sharedRole !== role) {
     sharedBus?.close();
     sharedRoom = roomId;
-    sharedBus = new RealtimeBroadcaster(roomId);
+    sharedRole = role;
+    sharedBus = new RealtimeBroadcaster(roomId, role);
   }
 
   return sharedBus;
 }
 
-export function publishGameCommand(command: GameCommand, roomId = DEFAULT_BATTLE_CONFIG.roomId) {
+export function publishGameCommand(command: GameCommand, roomId = getRealtimeRoomId()) {
   getBattleEventBus(roomId).sendCommand(command);
 }
 
-export function publishGameSnapshot(snapshot: GameStateSnapshot, roomId = DEFAULT_BATTLE_CONFIG.roomId) {
+export function publishGameSnapshot(snapshot: GameStateSnapshot, roomId = getRealtimeRoomId()) {
   getBattleEventBus(roomId).sendSnapshot(snapshot);
 }

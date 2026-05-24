@@ -11,7 +11,7 @@ Production-oriented Next.js prototype for a vertical TikTok LIVE interactive foo
 - Gift engine with cooldowns, tiers, target modes, visual effects, and balance overrides.
 - Mock TikTok adapter plus real TikTok connector placeholder.
 - BroadcastChannel/localStorage realtime fallback for same-machine `/live` and `/control`.
-- Socket.io-ready types and adapter for future remote control rooms.
+- Production Socket.io relay for remote `/control` and `/live` rooms across devices and deployments.
 - Creator config types prepared for later Supabase storage.
 
 ## Stack
@@ -21,7 +21,7 @@ Production-oriented Next.js prototype for a vertical TikTok LIVE interactive foo
 - Tailwind CSS
 - PixiJS
 - Zustand
-- Socket.io architecture
+- Socket.io relay
 - BroadcastChannel/localStorage fallback
 
 ## Local Setup
@@ -42,11 +42,14 @@ Open:
 ```bash
 NEXT_PUBLIC_TIKTOK_USERNAME=
 NEXT_PUBLIC_GAME_MODE=mock
-SOCKET_SERVER_URL=
-NEXT_PUBLIC_SOCKET_SERVER_URL=
+NEXT_PUBLIC_REALTIME_MODE=local
+NEXT_PUBLIC_SOCKET_URL=
+NEXT_PUBLIC_ROOM_ID=main-live-room
+REALTIME_PORT=4000
+CORS_ORIGIN=
 ```
 
-Use `NEXT_PUBLIC_GAME_MODE=mock` for local testing. `NEXT_PUBLIC_SOCKET_SERVER_URL` is only needed once a remote Socket.io relay exists.
+Use `NEXT_PUBLIC_GAME_MODE=mock` for local testing. Keep `NEXT_PUBLIC_REALTIME_MODE=local` for same-browser or same-machine tests. Switch to `socket` when `/control` and `/live` need to sync across different devices, networks, or deployed environments.
 
 ## Testing `/live` and `/control`
 
@@ -59,6 +62,42 @@ Use `NEXT_PUBLIC_GAME_MODE=mock` for local testing. `NEXT_PUBLIC_SOCKET_SERVER_U
 7. Confirm the live view remains readable and the arena is not covered by panels.
 
 Mock mode also generates comments, likes, follows, and gifts automatically.
+
+## Realtime Modes
+
+### Local Mode
+
+Local mode is the default:
+
+```bash
+NEXT_PUBLIC_REALTIME_MODE=local
+```
+
+It uses BroadcastChannel with a localStorage fallback. This is perfect for opening `/live` and `/control` in two tabs on the same machine. It does not sync across different devices because browser storage and BroadcastChannel are local to one browser profile.
+
+### Socket Mode
+
+Socket mode uses the standalone relay in `server/realtime-server.mjs`:
+
+```bash
+npm run realtime
+```
+
+Then set the frontend environment:
+
+```bash
+NEXT_PUBLIC_REALTIME_MODE=socket
+NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
+NEXT_PUBLIC_ROOM_ID=main-live-room
+```
+
+Open `/live` as the display client and `/control` as the controller. Both join the same room ID. Control commands, snapshots, config changes, theme changes, pause/resume, reset, stress tests, and gift triggers are relayed through Socket.io. If the socket disconnects, the client shows reconnect status and keeps the local fallback available for same-browser testing.
+
+Relay health check:
+
+```bash
+curl http://localhost:4000/health
+```
 
 ## OBS Setup
 
@@ -130,17 +169,20 @@ No secrets should ever be placed in `NEXT_PUBLIC_*` variables.
 
 ## Realtime Architecture
 
-Local testing uses:
+Local realtime uses:
 
 - `lib/realtime/broadcastChannel.ts`
 - `lib/realtime/broadcaster.ts`
 
-Future remote control uses:
+Socket realtime uses:
 
 - `lib/realtime/socketTypes.ts`
 - `lib/realtime/socketAdapter.ts`
+- `server/realtime-server.mjs`
 
-When `/control` and `/live` run on different machines or browsers without shared local browser channels, deploy a Socket.io relay. The relay should join room IDs and rebroadcast `game:command` and `game:snapshot` events.
+Rooms are keyed by `NEXT_PUBLIC_ROOM_ID`. `/live` joins as a `display`, `/control` joins as a `controller`, and optional passive clients can join as `observers`. The relay broadcasts `game:command`, `game:snapshot`, and `room:presence` events without storing game state.
+
+Future Socket.io relay hooks are intentionally isolated in `lib/realtime/broadcaster.ts` and `lib/realtime/socketAdapter.ts` so a production auth layer, creator routing, or persistence layer can be added without changing the game engine.
 
 ## Deployment Notes
 
@@ -151,7 +193,31 @@ npm run build
 npm run start
 ```
 
-Vercel is fine for the frontend. For remote multi-device realtime, deploy a separate Node Socket.io relay to Railway, Render, Fly.io, or a VPS and set `NEXT_PUBLIC_SOCKET_SERVER_URL`.
+Vercel is fine for the frontend. For remote multi-device realtime, deploy a separate Node Socket.io relay to Railway, Render, Fly.io, or a VPS and set `NEXT_PUBLIC_SOCKET_URL`.
+
+Socket relay deployment:
+
+```bash
+npm install
+npm run realtime
+```
+
+Set relay environment:
+
+```bash
+PORT=4000
+CORS_ORIGIN=https://your-frontend-domain.com
+```
+
+Set frontend environment:
+
+```bash
+NEXT_PUBLIC_REALTIME_MODE=socket
+NEXT_PUBLIC_SOCKET_URL=https://your-realtime-relay.example.com
+NEXT_PUBLIC_ROOM_ID=main-live-room
+```
+
+Remote `/control` and `/live` need this relay because Vercel serverless routes are not a long-running Socket.io process. Railway, Render, Fly.io, or a VPS can keep the Node relay alive and route WebSocket traffic reliably.
 
 ## Future Supabase Plan
 
@@ -178,6 +244,7 @@ Start from `lib/creator/types.ts` and `lib/creator/defaultConfig.ts`.
 - `/control` says `Open /live`: open `/live` in another tab first.
 - Buttons do nothing: check gift cooldowns and selected target team.
 - OBS crops the scene: use `1080x1920` Browser Source dimensions.
-- Remote `/control` does not affect `/live`: deploy the Socket.io relay and set `NEXT_PUBLIC_SOCKET_SERVER_URL`.
+- Remote `/control` does not affect `/live`: set `NEXT_PUBLIC_REALTIME_MODE=socket`, deploy the Socket.io relay, and point `NEXT_PUBLIC_SOCKET_URL` to it.
+- Socket status stays reconnecting: verify the relay is running, `CORS_ORIGIN` allows the frontend domain, both clients use the same `NEXT_PUBLIC_ROOM_ID`, and `/health` returns JSON.
 - Real TikTok does not connect: `lib/tiktok/realAdapter.ts` is still a placeholder until a connector is wired.
 - Hydration errors: the live shell mounts a deterministic loading frame before starting the client simulation; if errors return, check for server-rendered random/timer values.

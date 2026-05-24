@@ -6,6 +6,8 @@ import { createBattleEngine, type BattleEngine } from "@/lib/game/engine";
 import { DEFAULT_BATTLE_CONFIG, THEME_CLASSES } from "@/lib/game/config";
 import { getBattleEventBus } from "@/lib/game/eventBus";
 import type { GameStateSnapshot } from "@/lib/game/types";
+import { getRealtimeRoomId } from "@/lib/realtime/broadcaster";
+import type { RealtimeStatus } from "@/lib/realtime/socketTypes";
 import { getTikTokMode, getTikTokUsername } from "@/lib/tiktok/adapter";
 import { MockTikTokLiveAdapter } from "@/lib/tiktok/mockAdapter";
 import { RealTikTokLiveAdapter } from "@/lib/tiktok/realAdapter";
@@ -22,8 +24,14 @@ const BattleCanvas = dynamic(() => import("./BattleCanvas"), {
 });
 
 export function LiveBattleShell() {
-  const [engine] = useState<BattleEngine>(() => createBattleEngine(DEFAULT_BATTLE_CONFIG));
+  const [engine] = useState<BattleEngine>(() =>
+    createBattleEngine({
+      ...DEFAULT_BATTLE_CONFIG,
+      roomId: getRealtimeRoomId(),
+    }),
+  );
   const [snapshot, setSnapshot] = useState<GameStateSnapshot>(() => engine.getSnapshot());
+  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>();
   const mounted = useSyncExternalStore(
     (onStoreChange) => {
       onStoreChange();
@@ -36,12 +44,18 @@ export function LiveBattleShell() {
   const connectionLabel = useMemo(() => {
     const mode = getTikTokMode();
     const username = getTikTokUsername();
-    return mode === "real" && username ? `Real placeholder + mock fallback: @${username}` : "Mock TikTok mode";
-  }, []);
+    const tiktokLabel = mode === "real" && username ? `TikTok @${username}` : "Mock TikTok";
+    const realtimeLabel = realtimeStatus
+      ? realtimeStatus.mode === "local"
+        ? "local realtime"
+        : `${realtimeStatus.mode} ${realtimeStatus.socketState}`
+      : "local display";
+    return `${tiktokLabel} | ${realtimeLabel} | room ${snapshot.roomId}`;
+  }, [realtimeStatus, snapshot.roomId]);
 
   useEffect(() => {
     engine.seedInitialPlayers();
-    const bus = getBattleEventBus(snapshot.roomId);
+    const bus = getBattleEventBus(snapshot.roomId, "display");
     const unsubscribeCommands = bus.onCommand((command) => {
       engine.applyCommand(command);
     });
@@ -49,10 +63,14 @@ export function LiveBattleShell() {
       setSnapshot(nextSnapshot);
       bus.sendSnapshot(nextSnapshot);
     });
+    const unsubscribeStatus = bus.onStatus((status) => {
+      setRealtimeStatus(status);
+    });
 
     return () => {
       unsubscribeCommands();
       unsubscribeSnapshots();
+      unsubscribeStatus();
     };
   }, [engine, snapshot.roomId]);
 
