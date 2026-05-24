@@ -19,6 +19,9 @@ export class SocketRealtimeAdapter {
       return false;
     }
 
+    // Future relay contract: a small Node Socket.io server joins this room and
+    // rebroadcasts game:command and game:snapshot to every connected client.
+    // That is required when /control and /live are not in the same browser.
     const { io } = await import("socket.io-client");
     this.socket = io(this.url, {
       transports: ["websocket", "polling"],

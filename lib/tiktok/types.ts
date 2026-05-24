@@ -43,6 +43,7 @@ export interface TikTokConnectionEvent {
   type: "connected" | "disconnected";
   username: string;
   reason?: string;
+  reconnecting?: boolean;
 }
 
 export type TikTokLiveEvent =
@@ -51,3 +52,12 @@ export type TikTokLiveEvent =
   | TikTokLikeEvent
   | TikTokFollowEvent
   | TikTokConnectionEvent;
+
+export interface TikTokConnectorPlan {
+  usernameEnv: "NEXT_PUBLIC_TIKTOK_USERNAME";
+  publicModeEnv: "NEXT_PUBLIC_GAME_MODE";
+  serverSecretPolicy: "no-public-secrets";
+  commentMapping: "comment 1 joins team 1, comment 2 joins team 2";
+  giftMapping: "TikTok gift name maps to lib/game/gifts.ts attack definitions";
+  reconnectStrategy: "exponential-backoff-with-status-events";
+}

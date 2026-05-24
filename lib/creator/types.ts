@@ -14,7 +14,7 @@ export interface CreatorConfig {
   teams: Record<1 | 2, TeamConfig>;
   theme: CreatorThemeConfig;
   gifts: GiftRuntimeConfig;
-  battle: Pick<BattleConfig, "roundDurationMs" | "maxVisiblePlayers" | "debug">;
+  battle: Pick<BattleConfig, "roundDurationMs" | "maxVisiblePlayers" | "debug" | "respawn" | "attackBalance" | "obsLayout">;
   futureStorage?: {
     supabaseProjectUrl?: string;
     tables: Array<"creators" | "rooms" | "matches" | "gift_configs" | "themes">;

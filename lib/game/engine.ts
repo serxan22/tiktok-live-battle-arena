@@ -4,7 +4,6 @@ import {
   MAX_DAMAGE_NUMBERS,
   MAX_EFFECTS,
   MAX_FEED_ITEMS,
-  RESPAWN_DELAY_MS,
   SNAPSHOT_INTERVAL_MS,
 } from "./constants";
 import { executeGiftAttack, resolvedGiftDamage } from "./attacks";
@@ -211,6 +210,7 @@ export class BattleEngine {
       theme: this.config.theme,
       debug: this.config.debug,
       maxVisiblePlayers: this.config.maxVisiblePlayers,
+      obsLayout: this.config.obsLayout,
       aliveCount,
       totalPlayers,
       killFeed: [...this.killFeed],
@@ -336,9 +336,16 @@ export class BattleEngine {
       },
     }, damage);
 
+    const targetCopy =
+      gift.targetMode === "score"
+        ? `scored for ${this.config.teams[resolvedSource].shortName}`
+        : gift.targetMode === "selfTeam"
+          ? `boosted ${this.config.teams[resolvedSource].shortName}`
+          : `hit ${this.config.teams[resolvedTarget].shortName}`;
+
     this.pushFeed({
       type: "gift",
-      message: `${fromUser} used ${gift.label} on ${this.config.teams[resolvedTarget].shortName}`,
+      message: `${gift.icon} ${fromUser} ${targetCopy} with ${gift.label}`,
       team: resolvedSource,
       accent: this.config.teams[resolvedSource].primary,
     });
@@ -494,7 +501,7 @@ export class BattleEngine {
 
   private respawnPlayers(now: number) {
     for (const player of this.players.values()) {
-      if (player.alive || !player.deathTime || now - player.deathTime < RESPAWN_DELAY_MS) {
+      if (player.alive || !player.deathTime || now - player.deathTime < this.config.respawn.delayMs) {
         continue;
       }
 
@@ -511,8 +518,15 @@ export class BattleEngine {
   }
 
   private pruneTransient(now: number) {
-    this.damageNumbers = this.damageNumbers.filter((number) => number.expiresAt > now).slice(-MAX_DAMAGE_NUMBERS);
-    this.effects = this.effects.filter((effect) => effect.expiresAt > now).slice(-MAX_EFFECTS);
+    const maxDamageNumbers = this.config.attackBalance.maxDamageNumbers || MAX_DAMAGE_NUMBERS;
+    const maxEffects = this.config.attackBalance.maxEffects || MAX_EFFECTS;
+
+    this.damageNumbers = this.damageNumbers
+      .filter((number) => number.expiresAt > now)
+      .slice(-maxDamageNumbers);
+    this.effects = this.effects
+      .filter((effect) => effect.expiresAt > now)
+      .slice(-maxEffects);
 
     for (const player of this.players.values()) {
       player.activeEffects = player.activeEffects.filter((effect) => effect.expiresAt > now);

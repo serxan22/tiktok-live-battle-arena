@@ -3,7 +3,7 @@ export const PLAYER_BASE_STATS = {
   attack: 16,
   defense: 4,
   speed: 92,
-  radius: 18,
+  radius: 16,
 };
 
 export const BOOSTED_STATS = {
@@ -32,4 +32,4 @@ export const GIFT_BALANCE = {
 };
 
 export const DEFAULT_ROUND_DURATION_MS = 180_000;
-export const DEFAULT_MAX_VISIBLE_PLAYERS = 80;
+export const DEFAULT_MAX_VISIBLE_PLAYERS = 100;

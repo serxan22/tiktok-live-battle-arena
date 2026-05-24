@@ -1,18 +1,30 @@
 # TikTok LIVE Battle Arena
 
-A production-oriented Next.js prototype for an OBS-ready 9:16 TikTok LIVE interactive battle game. Viewers join Team 1 or Team 2 by commenting `1` or `2`, avatars spawn into a football-style arena, units fight automatically, and gifts trigger mapped attacks.
+Production-oriented Next.js prototype for a vertical TikTok LIVE interactive football battle arena. Viewers join Team 1 or Team 2 by commenting `1` or `2`, avatars spawn into a 2D pitch, units auto-fight, and gifts fire mapped attacks with premium OBS-ready visuals.
 
-## Features
+## What This Includes
 
-- `/live` vertical 1080x1920 OBS game screen with PixiJS rendering.
-- `/control` creator dashboard for fake users, gifts, timer, pause/resume, reset, teams, themes, debug, and config JSON.
-- Real game loop with movement, nearest-enemy targeting, attacks, HP, kills, deaths, respawns, damage numbers, health rings, death effects, and screen shake.
-- Gift attack engine with Rose, Like Burst, Follow, Paper Crane, Doughnut, Fire Lotus, Dragon Palm, Meteor Shower, Galaxy, Lion/Universe, All Combo, and All +1 Win.
-- TikTok adapter interface with mock adapter, real connector placeholder, and comment/gift/like/follow handlers.
-- Realtime architecture with Socket.io event types/adapters and local BroadcastChannel fallback so `/control` can drive `/live`.
-- Creator config, theme config, gift runtime overrides, and future Supabase-ready types.
+- `/live`: 9:16 OBS game screen designed for a `1080x1920` Browser Source.
+- `/control`: creator dashboard for local testing, fake users, gifts, match state, balance, teams, themes, and config JSON.
+- PixiJS client renderer with a real game loop outside React.
+- Auto-targeting combat, HP rings, damage numbers, deaths, respawns, boosted units, score, kill feed, gift feed, and debug overlay.
+- Gift engine with cooldowns, tiers, target modes, visual effects, and balance overrides.
+- Mock TikTok adapter plus real TikTok connector placeholder.
+- BroadcastChannel/localStorage realtime fallback for same-machine `/live` and `/control`.
+- Socket.io-ready types and adapter for future remote control rooms.
+- Creator config types prepared for later Supabase storage.
 
-## Setup
+## Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- PixiJS
+- Zustand
+- Socket.io architecture
+- BroadcastChannel/localStorage fallback
+
+## Local Setup
 
 ```bash
 npm install
@@ -25,36 +37,43 @@ Open:
 - `http://localhost:3000/live`
 - `http://localhost:3000/control`
 
-## Local Testing
+## Environment
+
+```bash
+NEXT_PUBLIC_TIKTOK_USERNAME=
+NEXT_PUBLIC_GAME_MODE=mock
+SOCKET_SERVER_URL=
+NEXT_PUBLIC_SOCKET_SERVER_URL=
+```
+
+Use `NEXT_PUBLIC_GAME_MODE=mock` for local testing. `NEXT_PUBLIC_SOCKET_SERVER_URL` is only needed once a remote Socket.io relay exists.
+
+## Testing `/live` and `/control`
 
 1. Start `npm run dev`.
 2. Open `/live` in one browser tab.
-3. Open `/control` in another tab.
-4. Use `+50 stress` to validate 50+ fake users.
-5. Trigger every gift from the gift attack grid.
-6. Toggle debug mode to view tick/player/effect counts on `/live`.
+3. Open `/control` in another browser tab.
+4. Click `+50 stress` to add 50 fake viewers.
+5. Trigger Rose, Thunder Bridge, Meteor Shower, Galaxy Laser, Ultimate, and All Combo.
+6. Use pause, resume, reset, and debug mode.
+7. Confirm the live view remains readable and the arena is not covered by panels.
 
-The live screen also starts a mock TikTok adapter by default, so comments, likes, follows, and gifts continue to arrive automatically.
+Mock mode also generates comments, likes, follows, and gifts automatically.
 
 ## OBS Setup
 
-Use an OBS Browser Source:
+Create an OBS Browser Source:
 
 - URL: `http://localhost:3000/live`
 - Width: `1080`
 - Height: `1920`
 - FPS: `60`
-- Enable browser source transparency only if you want to composite over another scene.
+- Shutdown source when not visible: optional
+- Refresh browser when scene becomes active: optional
 
-The layout is designed for a vertical TikTok LIVE canvas and keeps controls outside the OBS screen.
+The live screen uses a centered vertical stage with safe top, arena, feed, and gift-dock bands. It also scales down cleanly for laptop preview while keeping the OBS coordinate system intact.
 
-## How `/live` and `/control` Work
-
-`/live` owns the authoritative client-side simulation. It runs the battle engine and PixiJS renderer, listens for commands, and broadcasts snapshots.
-
-`/control` sends commands over the realtime broadcaster and receives snapshots for cooldowns and status. Locally this uses `BroadcastChannel`, with a `localStorage` event fallback. Socket.io types and adapters are already present for a future dedicated realtime server.
-
-## Customizing Gifts
+## Gift Customization
 
 Gift definitions live in:
 
@@ -62,72 +81,103 @@ Gift definitions live in:
 - `lib/game/attacks.ts`
 - `lib/game/balancing.ts`
 
-Each gift has `id`, TikTok gift name, label, icon, tier, damage, cooldown, target mode, animation type, description, and handler. Runtime damage/cooldown overrides can be edited in `/control` and exported/imported as JSON.
+Each gift includes:
 
-## Connecting Real TikTok Later
+- `id`
+- TikTok gift name
+- label
+- icon
+- tier
+- damage
+- cooldown
+- target mode
+- animation type
+- description
+- handler
 
-The real integration boundary is:
+Runtime damage and cooldown overrides can be changed in `/control` and exported/imported as JSON.
+
+## Teams, Themes, and Layout
+
+Core creator defaults live in:
+
+- `lib/game/config.ts`
+- `lib/game/constants.ts`
+- `lib/creator/defaultConfig.ts`
+
+Config includes team identity, theme colors, round duration, max visible players, respawn settings, attack balance, and OBS layout bands.
+
+## TikTok Connector Plan
+
+Current real connector boundary:
 
 - `lib/tiktok/adapter.ts`
+- `lib/tiktok/types.ts`
 - `lib/tiktok/handlers.ts`
 - `lib/tiktok/realAdapter.ts`
 
-Wire the real `TikTokLiveConnector` in `lib/tiktok/realAdapter.ts`. Keep secrets, signing services, and any credentialed calls on a server process. Do not expose secrets through `NEXT_PUBLIC_*` variables.
+The real connector is intentionally not wired yet. Add `TikTokLiveConnector` in `lib/tiktok/realAdapter.ts` or, preferably, inside a future Node Socket.io relay if the connector needs server-only credentials, cookies, signing, or proxy configuration.
 
-Set:
+Mapping rules:
 
-```bash
-NEXT_PUBLIC_TIKTOK_USERNAME=your_live_username
-NEXT_PUBLIC_GAME_MODE=real
-```
+- Comment `1` joins Team 1.
+- Comment `2` joins Team 2.
+- Gifts map by TikTok gift name to `lib/game/gifts.ts`.
+- Likes create small team effects.
+- Follows spawn boosted units and a hook effect.
 
-Until the connector is wired, real mode uses the placeholder plus mock fallback so the game remains testable.
+No secrets should ever be placed in `NEXT_PUBLIC_*` variables.
 
-## Deploying the Frontend
+## Realtime Architecture
 
-Deploy the Next.js app to Vercel, Netlify, Render, or a VPS:
+Local testing uses:
+
+- `lib/realtime/broadcastChannel.ts`
+- `lib/realtime/broadcaster.ts`
+
+Future remote control uses:
+
+- `lib/realtime/socketTypes.ts`
+- `lib/realtime/socketAdapter.ts`
+
+When `/control` and `/live` run on different machines or browsers without shared local browser channels, deploy a Socket.io relay. The relay should join room IDs and rebroadcast `game:command` and `game:snapshot` events.
+
+## Deployment Notes
+
+Frontend deployment:
 
 ```bash
 npm run build
 npm run start
 ```
 
-For a pure local/OBS setup, no external service is required.
+Vercel is fine for the frontend. For remote multi-device realtime, deploy a separate Node Socket.io relay to Railway, Render, Fly.io, or a VPS and set `NEXT_PUBLIC_SOCKET_SERVER_URL`.
 
-## Deploying Realtime Later
+## Future Supabase Plan
 
-For multi-device creator panels or remote producers, deploy a small Node Socket.io server on Railway, Render, Fly.io, or a VPS using the contracts in:
-
-- `lib/realtime/socketTypes.ts`
-- `lib/realtime/socketAdapter.ts`
-- `lib/realtime/broadcaster.ts`
-
-The server should accept `room:join`, relay `game:command` to the room, and optionally relay `game:snapshot` to control panels.
-
-## Future Supabase Storage
-
-No database is required now. Later, Supabase can store:
+No database is included yet. Supabase can later persist:
 
 - creators
 - rooms/sessions
-- matches
+- match history
 - gift configs
 - theme configs
 
-The starter types are in `lib/creator/types.ts` and `lib/creator/defaultConfig.ts`. Add Supabase clients server-side first, then persist room config before the live shell creates the battle engine.
+Start from `lib/creator/types.ts` and `lib/creator/defaultConfig.ts`.
 
 ## Performance Notes
 
-- The PixiJS renderer updates every frame while React receives snapshots at a lower cadence.
-- The engine keeps combat and effects outside React state.
-- Visible players are capped by `maxVisiblePlayers`.
-- Damage numbers, visual effects, and feed items are pruned continuously.
-- The `+50 stress` button is intended for quick local performance checks.
+- PixiJS renders every frame.
+- React receives lower-frequency snapshots.
+- Player views, damage numbers, and effects are pruned continuously.
+- Visible players are capped by config.
+- Effects are drawn with simple shapes and short lifetimes for stable 50-100 viewer tests.
 
 ## Troubleshooting
 
-- If `/control` says `Open /live`, open `/live` in another tab so it can own the simulation.
-- If commands do not cross tabs, check browser support for `BroadcastChannel`; the fallback uses `localStorage` events.
-- If gift buttons appear to do nothing, check cooldown labels.
-- If the OBS source is cropped, set Browser Source size to `1080x1920`.
-- If real TikTok events do not arrive, confirm `lib/tiktok/realAdapter.ts` has been wired to a real connector and that secrets are not placed in public env vars.
+- `/control` says `Open /live`: open `/live` in another tab first.
+- Buttons do nothing: check gift cooldowns and selected target team.
+- OBS crops the scene: use `1080x1920` Browser Source dimensions.
+- Remote `/control` does not affect `/live`: deploy the Socket.io relay and set `NEXT_PUBLIC_SOCKET_SERVER_URL`.
+- Real TikTok does not connect: `lib/tiktok/realAdapter.ts` is still a placeholder until a connector is wired.
+- Hydration errors: the live shell mounts a deterministic loading frame before starting the client simulation; if errors return, check for server-rendered random/timer values.

@@ -120,16 +120,16 @@ export function LiveBattleShell() {
         <GiftActionList snapshot={snapshot} />
         <DebugPanel snapshot={snapshot} />
 
-        <div className="pointer-events-none absolute left-1/2 top-[178px] z-20 -translate-x-1/2 rounded-full border border-white/12 bg-black/35 px-4 py-2 text-[13px] font-bold uppercase text-slate-300 backdrop-blur-md">
+        <div className="live-mode-badge">
           {connectionLabel}
         </div>
 
         {winner ? (
           <div className="pointer-events-none absolute inset-0 z-40 grid place-items-center bg-black/40">
             <div className="winner-banner">
-              <div className="text-[20px] font-black uppercase text-slate-300">Round complete</div>
-              <div className="mt-2 text-[64px] font-black leading-none text-white">{winner}</div>
-              <div className="mt-4 text-[20px] font-bold text-slate-300">Use /control to reset or start the next match</div>
+              <div className="winner-kicker">Round complete</div>
+              <div className="winner-title">{winner}</div>
+              <div className="winner-copy">Use /control to reset or start the next match</div>
             </div>
           </div>
         ) : null}

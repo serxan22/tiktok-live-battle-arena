@@ -68,8 +68,16 @@ export function stepPlayers(players: Player[], dtSeconds: number, now: number, c
       }
     }
 
-    player.x = clamp(player.x, FIELD.x + player.radius, FIELD.x + FIELD.width - player.radius);
-    player.y = clamp(player.y, FIELD.y + player.radius, FIELD.y + FIELD.height - player.radius);
+    player.x = clamp(
+      player.x,
+      FIELD.x + FIELD.safePadding + player.radius * 0.4,
+      FIELD.x + FIELD.width - FIELD.safePadding - player.radius * 0.4,
+    );
+    player.y = clamp(
+      player.y,
+      FIELD.y + FIELD.safePadding + player.radius * 0.4,
+      FIELD.y + FIELD.height - FIELD.safePadding - player.radius * 0.4,
+    );
   }
 
   resolveOverlap(players, dtSeconds);

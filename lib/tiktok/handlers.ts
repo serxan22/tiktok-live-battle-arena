@@ -5,6 +5,11 @@ import type { TikTokLiveEvent } from "./types";
 
 const userTeams = new Map<string, TeamId>();
 
+/**
+ * Converts normalized TikTok events into game commands. This is intentionally
+ * connector-agnostic: the real adapter should normalize TikTokLiveConnector
+ * payloads into TikTokLiveEvent first, then this function owns battle semantics.
+ */
 export function tiktokEventToCommands(event: TikTokLiveEvent): GameCommand[] {
   switch (event.type) {
     case "comment": {
@@ -30,6 +35,8 @@ export function tiktokEventToCommands(event: TikTokLiveEvent): GameCommand[] {
         return [];
       }
 
+      // Gifts inherit the viewer's last chosen team. If the viewer gifted before
+      // joining, Team 1 is used so the event remains deterministic in mock mode.
       const sourceTeam = event.teamHint ?? userTeams.get(event.user.userId) ?? 1;
       return [
         {

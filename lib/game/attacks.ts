@@ -2,7 +2,7 @@ import { FIELD } from "./constants";
 import { GIFT_BALANCE } from "./balancing";
 import type { GiftAttackDefinition, Player, TeamId, VisualEffect } from "./types";
 import { createEffect } from "./effects";
-import { distance, normalize, opposingTeam, pickOne, randomBetween } from "./utils";
+import { clamp, distance, normalize, opposingTeam, pickOne, randomBetween } from "./utils";
 
 export interface AttackContext {
   now: number;
@@ -34,6 +34,7 @@ export function executeGiftAttack(gift: GiftAttackDefinition, ctx: AttackContext
       return;
     case "boostedUnit":
       ctx.spawnBoostedUnit(ctx.sourceTeam, ctx.fromUser);
+      followHook(gift, ctx, damage);
       ctx.addEffect(
         createEffect({
           type: "boost",
@@ -89,6 +90,38 @@ export function executeGiftAttack(gift: GiftAttackDefinition, ctx: AttackContext
       );
       return;
   }
+}
+
+function followHook(gift: GiftAttackDefinition, ctx: AttackContext, damage: number) {
+  const targetTeam = opposingTeam(ctx.sourceTeam);
+  const target = sortedByNearest(ctx.getLivePlayers(targetTeam), ctx.sourceTeam)[0];
+  if (!target) {
+    return;
+  }
+
+  const origin = {
+    x: ctx.sourceTeam === 1 ? FIELD.x + 42 : FIELD.x + FIELD.width - 42,
+    y: target.y + randomBetween(-36, 36),
+  };
+  const direction = ctx.sourceTeam === 1 ? -1 : 1;
+
+  target.x += direction * 42;
+  ctx.addEffect(
+    createEffect({
+      type: "hook",
+      x: origin.x,
+      y: origin.y,
+      targetX: target.x,
+      targetY: target.y,
+      color: ctx.teamColor(ctx.sourceTeam),
+      now: ctx.now,
+      radius: 48,
+      durationMs: 720,
+      intensity: 0.95,
+      team: ctx.sourceTeam,
+    }),
+  );
+  ctx.damagePlayer(target, Math.max(8, damage), ctx.sourceTeam, gift.label);
 }
 
 function sortedByNearest(players: Player[], sourceTeam: TeamId) {
@@ -186,8 +219,8 @@ function findAreaCenter(players: Player[]) {
 
   const candidate = pickOne(players);
   return {
-    x: candidate.x + randomBetween(-70, 70),
-    y: candidate.y + randomBetween(-70, 70),
+    x: clamp(candidate.x + randomBetween(-70, 70), FIELD.x + FIELD.safePadding, FIELD.x + FIELD.width - FIELD.safePadding),
+    y: clamp(candidate.y + randomBetween(-70, 70), FIELD.y + FIELD.safePadding, FIELD.y + FIELD.height - FIELD.safePadding),
   };
 }
 
@@ -257,6 +290,7 @@ function knockbackWave(gift: GiftAttackDefinition, ctx: AttackContext, damage: n
 }
 
 function meteorShower(gift: GiftAttackDefinition, ctx: AttackContext, damage: number, targetTeam: TeamId) {
+  ctx.shake(6, 420);
   const targets = ctx.getLivePlayers(targetTeam);
   const bombs = Math.max(4, Math.min(8, targets.length || 4));
 
@@ -285,6 +319,7 @@ function meteorShower(gift: GiftAttackDefinition, ctx: AttackContext, damage: nu
 }
 
 function giantLaser(gift: GiftAttackDefinition, ctx: AttackContext, damage: number, targetTeam: TeamId) {
+  ctx.shake(8, 520);
   const y = findAreaCenter(ctx.getLivePlayers(targetTeam)).y;
   ctx.addEffect(
     createEffect({
@@ -310,7 +345,7 @@ function giantLaser(gift: GiftAttackDefinition, ctx: AttackContext, damage: numb
 }
 
 function ultimateScreenAttack(gift: GiftAttackDefinition, ctx: AttackContext, damage: number, targetTeam: TeamId) {
-  ctx.shake(18, GIFT_BALANCE.ultimateShakeMs);
+  ctx.shake(15, GIFT_BALANCE.ultimateShakeMs);
   ctx.addEffect(
     createEffect({
       type: "ultimate",
@@ -331,6 +366,7 @@ function ultimateScreenAttack(gift: GiftAttackDefinition, ctx: AttackContext, da
 }
 
 function comboChain(gift: GiftAttackDefinition, ctx: AttackContext, damage: number, targetTeam: TeamId) {
+  ctx.shake(10, 680);
   bulletStorm(gift, ctx, Math.round(damage * 0.28), targetTeam);
   thunderBridge(gift, ctx, Math.round(damage * 0.52), targetTeam);
   meteorShower(gift, ctx, Math.round(damage * 0.62), targetTeam);

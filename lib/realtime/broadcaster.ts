@@ -12,6 +12,9 @@ export class RealtimeBroadcaster {
 
   constructor(public roomId = DEFAULT_BATTLE_CONFIG.roomId) {
     this.transport = new LocalBroadcastTransport(`${CHANNEL_PREFIX}:${roomId}`);
+    // Local BroadcastChannel keeps one-machine OBS testing zero-config.
+    // When NEXT_PUBLIC_SOCKET_SERVER_URL is set, SocketRealtimeAdapter also
+    // mirrors commands/snapshots through a remote relay for multi-device control.
     this.socket = new SocketRealtimeAdapter(roomId);
     void this.socket.connect();
   }

@@ -5,14 +5,16 @@ import {
   Activity,
   Bug,
   Download,
+  ExternalLink,
   Pause,
   Play,
   Plus,
+  RadioTower,
   RefreshCw,
   Send,
+  Settings2,
   TimerReset,
   Upload,
-  Users,
   Zap,
 } from "lucide-react";
 import { DEFAULT_BATTLE_CONFIG } from "@/lib/game/config";
@@ -50,12 +52,16 @@ export function ControlDashboard() {
       theme,
       roundDurationMs: durationSec * 1000,
       debug,
+      maxVisiblePlayers: snapshot?.maxVisiblePlayers ?? DEFAULT_BATTLE_CONFIG.maxVisiblePlayers,
+      respawn: DEFAULT_BATTLE_CONFIG.respawn,
+      attackBalance: DEFAULT_BATTLE_CONFIG.attackBalance,
+      obsLayout: snapshot?.obsLayout ?? DEFAULT_BATTLE_CONFIG.obsLayout,
       gifts: {
         damageOverrides: Object.fromEntries(Object.entries(giftEdits).map(([id, edit]) => [id, edit.damage])),
         cooldownOverrides: Object.fromEntries(Object.entries(giftEdits).map(([id, edit]) => [id, edit.cooldownMs])),
       },
     }),
-    [debug, durationSec, giftEdits, snapshot?.roomId, snapshot?.teams, theme],
+    [debug, durationSec, giftEdits, snapshot?.maxVisiblePlayers, snapshot?.obsLayout, snapshot?.roomId, snapshot?.teams, theme],
   );
 
   function addPlayer(team: TeamId, boosted = false) {
@@ -94,7 +100,9 @@ export function ControlDashboard() {
   function importConfig() {
     try {
       const parsed = JSON.parse(configText) as Partial<Omit<BattleConfig, "theme">> & {
-        battle?: { roundDurationMs?: number; maxVisiblePlayers?: number; debug?: boolean };
+        battle?: Partial<
+          Pick<BattleConfig, "roundDurationMs" | "maxVisiblePlayers" | "debug" | "respawn" | "attackBalance" | "obsLayout">
+        >;
         theme?: ThemeKey | { key?: ThemeKey };
       };
       const parsedTheme = typeof parsed.theme === "object" && parsed.theme !== null ? parsed.theme.key : parsed.theme;
@@ -106,6 +114,9 @@ export function ControlDashboard() {
           roundDurationMs: parsed.roundDurationMs ?? parsed.battle?.roundDurationMs,
           debug: parsed.debug ?? parsed.battle?.debug,
           maxVisiblePlayers: parsed.maxVisiblePlayers ?? parsed.battle?.maxVisiblePlayers,
+          respawn: parsed.respawn ?? parsed.battle?.respawn,
+          attackBalance: parsed.attackBalance ?? parsed.battle?.attackBalance,
+          obsLayout: parsed.obsLayout ?? parsed.battle?.obsLayout,
         },
       });
       setImportError("");
@@ -121,27 +132,41 @@ export function ControlDashboard() {
           <div>
             <div className="text-sm font-black uppercase text-cyan-300">Creator control room</div>
             <h1 className="mt-1 text-4xl font-black tracking-normal text-white">TikTok LIVE Battle Arena</h1>
+            <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-400">
+              Open <span className="font-black text-slate-200">/live</span> in another tab or OBS Browser Source, then use this panel to send local mock events.
+            </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <StatusPill label={connected ? "Realtime bus connected" : "Waiting"} active={connected} />
             <StatusPill label={snapshot ? "Live screen online" : "Open /live"} active={Boolean(snapshot)} />
+            <a className="control-open-live" href="/live" target="_blank" rel="noreferrer">
+              <ExternalLink size={15} />
+              Open live
+            </a>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[380px_minmax(0,1fr)_420px]">
+        <div className="control-grid">
           <section className="control-section">
             <div className="control-heading">
-              <Users size={17} />
-              Players
+              <RadioTower size={17} />
+              Live operations
             </div>
-            <div className="grid grid-cols-2 gap-3">
+
+            <Subheading label="Viewer joins" />
+            <div className="grid grid-cols-2 gap-2">
               <CommandButton icon={<Plus size={17} />} label="Team 1" onClick={() => addPlayer(1)} />
               <CommandButton icon={<Plus size={17} />} label="Team 2" onClick={() => addPlayer(2)} />
+            </div>
+
+            <Subheading label="Stress tests" />
+            <div className="grid grid-cols-2 gap-2">
               <CommandButton icon={<Activity size={17} />} label="+10 random" onClick={() => sendCommand({ type: "addRandomPlayers", count: 10 })} />
               <CommandButton icon={<Zap size={17} />} label="+50 stress" onClick={() => sendCommand({ type: "addRandomPlayers", count: 50 })} />
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <Subheading label="Match state" />
+            <div className="grid grid-cols-2 gap-2">
               <CommandButton icon={<Pause size={17} />} label="Pause" onClick={() => sendCommand({ type: "pause" })} />
               <CommandButton icon={<Play size={17} />} label="Resume" onClick={() => sendCommand({ type: "resume" })} />
               <CommandButton icon={<RefreshCw size={17} />} label="Reset match" danger onClick={() => sendCommand({ type: "reset" })} />
@@ -152,7 +177,7 @@ export function ControlDashboard() {
               />
             </div>
 
-            <div className="mt-5">
+            <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-3">
               <label className="control-label" htmlFor="duration">
                 Round duration seconds
               </label>
@@ -170,6 +195,7 @@ export function ControlDashboard() {
                   type="button"
                   className="icon-command"
                   title="Set timer"
+                  aria-label="Set timer"
                   onClick={() => sendCommand({ type: "setRoundDuration", durationMs: durationSec * 1000 })}
                 >
                   <TimerReset size={19} />
@@ -179,32 +205,31 @@ export function ControlDashboard() {
           </section>
 
           <section className="control-section">
-            <div className="control-heading">
-              <Zap size={17} />
-              Gift attack engine
-            </div>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <span className="text-sm font-bold text-slate-400">Target team</span>
-              <div className="segmented">
+            <div className="control-heading-row">
+              <div className="control-heading mb-0">
+                <Zap size={17} />
+                Gift attack engine
+              </div>
+              <div className="target-selector" aria-label="Gift target team">
                 <button
                   type="button"
-                  className={targetTeam === 1 ? "active" : ""}
+                  className={targetTeam === 1 ? "target-choice target-choice-blue active" : "target-choice target-choice-blue"}
                   onClick={() => setTargetTeam(1)}
                 >
-                  Team 1
+                  Target Team 1
                 </button>
                 <button
                   type="button"
-                  className={targetTeam === 2 ? "active" : ""}
+                  className={targetTeam === 2 ? "target-choice target-choice-red active" : "target-choice target-choice-red"}
                   onClick={() => setTargetTeam(2)}
                 >
-                  Team 2
+                  Target Team 2
                 </button>
               </div>
-              <span className="rounded-full border border-white/10 px-3 py-2 text-xs font-black uppercase text-slate-400">
-                Source: Team {sourceTeam}
-              </span>
             </div>
+            <p className="mb-4 text-sm font-semibold text-slate-400">
+              Current source team is <span className="font-black text-slate-200">Team {sourceTeam}</span>. Cooldowns mirror the live room snapshot.
+            </p>
 
             <div className="gift-control-grid">
               {GIFT_ATTACKS.map((gift) => {
@@ -215,7 +240,7 @@ export function ControlDashboard() {
                     <button type="button" className="gift-trigger" onClick={() => triggerGift(gift.id)}>
                       <span>{gift.icon}</span>
                       <strong>{gift.label}</strong>
-                      <em>{remaining > 0 ? `${Math.ceil(remaining / 1000)}s` : gift.tier}</em>
+                      <em>{remaining > 0 ? `${Math.ceil(remaining / 1000)}s cooldown` : gift.tier}</em>
                     </button>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       <NumberField
@@ -238,9 +263,10 @@ export function ControlDashboard() {
           <div className="flex flex-col gap-5">
             <section className="control-section">
               <div className="control-heading">
-                <Send size={17} />
-                Team identity
+                <Settings2 size={17} />
+                Creator config
               </div>
+              <Subheading label="Team identity" />
               {[1, 2].map((team) => (
                 <div key={team} className="mb-4 last:mb-0">
                   <label className="control-label" htmlFor={`team-${team}`}>
@@ -259,6 +285,7 @@ export function ControlDashboard() {
                       type="button"
                       className="icon-command"
                       title="Apply team name"
+                      aria-label={`Apply Team ${team} name`}
                       onClick={() =>
                         sendCommand({
                           type: "setTeamName",
@@ -307,6 +334,10 @@ function StatusPill({ label, active }: { label: string; active: boolean }) {
       {label}
     </div>
   );
+}
+
+function Subheading({ label }: { label: string }) {
+  return <div className="control-subheading">{label}</div>;
 }
 
 function CommandButton({

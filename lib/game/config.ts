@@ -1,4 +1,12 @@
 import { DEFAULT_MAX_VISIBLE_PLAYERS, DEFAULT_ROUND_DURATION_MS } from "./balancing";
+import {
+  MAX_DAMAGE_NUMBERS,
+  MAX_EFFECTS,
+  OBS_LAYOUT,
+  PLAYER_ATTACK_COOLDOWN_MS,
+  PLAYER_ATTACK_RANGE,
+  RESPAWN_DELAY_MS,
+} from "./constants";
 import type { BattleConfig, TeamConfig, ThemeKey } from "./types";
 
 export const DEFAULT_TEAMS: Record<1 | 2, TeamConfig> = {
@@ -43,6 +51,17 @@ export const DEFAULT_BATTLE_CONFIG: BattleConfig = {
     cooldownOverrides: {},
   },
   maxVisiblePlayers: DEFAULT_MAX_VISIBLE_PLAYERS,
+  respawn: {
+    delayMs: RESPAWN_DELAY_MS,
+    invulnerableMs: 650,
+  },
+  attackBalance: {
+    playerAttackRange: PLAYER_ATTACK_RANGE,
+    playerAttackCooldownMs: PLAYER_ATTACK_COOLDOWN_MS,
+    maxDamageNumbers: MAX_DAMAGE_NUMBERS,
+    maxEffects: MAX_EFFECTS,
+  },
+  obsLayout: OBS_LAYOUT,
 };
 
 export function mergeBattleConfig(config?: Partial<BattleConfig>): BattleConfig {
@@ -62,6 +81,18 @@ export function mergeBattleConfig(config?: Partial<BattleConfig>): BattleConfig 
         ...DEFAULT_BATTLE_CONFIG.gifts.cooldownOverrides,
         ...(config?.gifts?.cooldownOverrides ?? {}),
       },
+    },
+    respawn: {
+      ...DEFAULT_BATTLE_CONFIG.respawn,
+      ...(config?.respawn ?? {}),
+    },
+    attackBalance: {
+      ...DEFAULT_BATTLE_CONFIG.attackBalance,
+      ...(config?.attackBalance ?? {}),
+    },
+    obsLayout: {
+      ...DEFAULT_BATTLE_CONFIG.obsLayout,
+      ...(config?.obsLayout ?? {}),
     },
   };
 }

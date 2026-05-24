@@ -17,6 +17,9 @@ export const DEFAULT_CREATOR_CONFIG: CreatorConfig = {
     roundDurationMs: DEFAULT_BATTLE_CONFIG.roundDurationMs,
     maxVisiblePlayers: DEFAULT_BATTLE_CONFIG.maxVisiblePlayers,
     debug: DEFAULT_BATTLE_CONFIG.debug,
+    respawn: DEFAULT_BATTLE_CONFIG.respawn,
+    attackBalance: DEFAULT_BATTLE_CONFIG.attackBalance,
+    obsLayout: DEFAULT_BATTLE_CONFIG.obsLayout,
   },
   futureStorage: {
     tables: ["creators", "rooms", "matches", "gift_configs", "themes"],

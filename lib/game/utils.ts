@@ -35,11 +35,11 @@ export function opposingTeam(team: TeamId): TeamId {
 
 export function spawnPoint(team: TeamId, radius: number) {
   const jitterX = randomBetween(-42, 42);
-  const gutter = radius + 16;
+  const gutter = FIELD.safePadding + radius;
 
   return {
     x: clamp(TEAM_SPAWN_X[team] + jitterX, FIELD.x + gutter, FIELD.x + FIELD.width - gutter),
-    y: randomBetween(FIELD.y + 130, FIELD.y + FIELD.height - 130),
+    y: randomBetween(FIELD.y + FIELD.safePadding + 34, FIELD.y + FIELD.height - FIELD.safePadding - 34),
   };
 }
 

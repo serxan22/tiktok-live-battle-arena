@@ -19,6 +19,7 @@ export type TargetMode =
 export type AnimationType =
   | "missile"
   | "bulletStorm"
+  | "hook"
   | "boost"
   | "thunderBridge"
   | "tornado"
@@ -148,6 +149,28 @@ export interface GiftRuntimeConfig {
   cooldownOverrides: Record<string, number>;
 }
 
+export interface ObsLayoutConfig {
+  designWidth: number;
+  designHeight: number;
+  topSafeArea: number;
+  fieldTop: number;
+  fieldBottom: number;
+  feedTop: number;
+  giftDockTop: number;
+}
+
+export interface RespawnConfig {
+  delayMs: number;
+  invulnerableMs: number;
+}
+
+export interface AttackBalanceConfig {
+  playerAttackRange: number;
+  playerAttackCooldownMs: number;
+  maxDamageNumbers: number;
+  maxEffects: number;
+}
+
 export interface BattleConfig {
   roomId: string;
   roundDurationMs: number;
@@ -156,6 +179,9 @@ export interface BattleConfig {
   teams: Record<TeamId, TeamConfig>;
   gifts: GiftRuntimeConfig;
   maxVisiblePlayers: number;
+  respawn: RespawnConfig;
+  attackBalance: AttackBalanceConfig;
+  obsLayout: ObsLayoutConfig;
 }
 
 export interface GameStateSnapshot {
@@ -170,6 +196,7 @@ export interface GameStateSnapshot {
   theme: ThemeKey;
   debug: boolean;
   maxVisiblePlayers: number;
+  obsLayout: ObsLayoutConfig;
   aliveCount: Record<TeamId, number>;
   totalPlayers: Record<TeamId, number>;
   killFeed: FeedItem[];
